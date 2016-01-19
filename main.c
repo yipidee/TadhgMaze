@@ -9,19 +9,17 @@
 #include <SDL.h>
 
 const uint8_t Directions[] = {0x01, 0x02, 0x04, 0x08};        //N, E, S, W
-const uint8_t OppDirections[] = {0x04, 0x08, 0x01, 0x02};     //S, W, N, E
 const int moveDir[] = {0,-1,1,0,0,1,-1,0};
 
 //function prototypes
 void boreFrom(uint8_t* maze, int mazeW, int mazeH, int x, int y);
-bool allChecked(uint8_t node);
 
 int main(int args, char** argv)
 {
     const int mazeW = 10;
     const int mazeH = 10;
 
-    uint8_t* maze = malloc(sizeof(uint8_t)*mazeW*mazeH);
+    uint8_t maze[mazeW*mazeH];
 
     int n,m;
     for(n=0; n<mazeW; ++n)
@@ -40,23 +38,28 @@ int main(int args, char** argv)
     y = rand()%mazeH;
 
     //recursive function that carves maze starting at the specified point
-    boreFrom(maze, mazeW, mazeH, x, y);
+    boreFrom(&maze, mazeW, mazeH, x, y);
 
     //function to create a texture representation of the maze
     //initialise SDL, create window, get renderer and set to render to texture
     int textureW = 640;
     int textureH = 640;
 
+    //SDL init
     SDL_Init(SDL_INIT_VIDEO);
     SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
+    
+    //Create window renderer and blank texture
     SDL_Window* window = SDL_CreateWindow("Tadhg Maze Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, textureW, textureH, SDL_WINDOW_SHOWN);
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_TEXTUREACCESS_TARGET);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
     SDL_Texture* mazeTexture = SDL_CreateTexture(renderer,SDL_GetWindowPixelFormat(window),SDL_TEXTUREACCESS_TARGET,textureW,textureH);
 
+    //Set rendering target to blank texture and clear
     SDL_SetRenderTarget(renderer, mazeTexture);
+    SDL_RenderClear(renderer);
+    
     //draw outline of maze
     SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-    SDL_RenderClear(renderer);
     SDL_Rect outerRect = {0,0,textureW,textureH};
     SDL_RenderDrawRect(renderer, &outerRect);
 
@@ -68,14 +71,16 @@ int main(int args, char** argv)
     {
         for(j=0; j<mazeH; ++j)
         {
-            if(((maze[i*mazeH+j]&Directions[1])==Directions[1])&&i!=mazeW-1) SDL_RenderDrawLine(renderer, (i+1)*nodeW, j*nodeH, (i+1)*nodeW, (j+1)*nodeH);
-            if(((maze[i*mazeH+j]&Directions[2])==Directions[2])&&j!=mazeH-1) SDL_RenderDrawLine(renderer, i*nodeW, (j+1)*nodeH, (i+1)*nodeW, (j+1)*nodeH);
+            if(((maze[i*mazeH+j]&Directions[1])!=Directions[1])&&i!=mazeW-1) SDL_RenderDrawLine(renderer, (i+1)*nodeW, j*nodeH, (i+1)*nodeW, (j+1)*nodeH);
+            if(((maze[i*mazeH+j]&Directions[2])!=Directions[2])&&j!=mazeH-1) SDL_RenderDrawLine(renderer, i*nodeW, (j+1)*nodeH, (i+1)*nodeW, (j+1)*nodeH);
         }
     }
 
+    //reset render target to screen (default)
     SDL_SetRenderTarget(renderer, NULL);
+    //render maze texture to screen
     SDL_RenderCopy(renderer, mazeTexture, NULL, NULL);
-
+    //display renderer content
     SDL_RenderPresent(renderer);
 
     bool quit = false;
@@ -94,7 +99,6 @@ int main(int args, char** argv)
     }
 
     //free memory allocated for maze
-    free(maze);
     SDL_DestroyTexture(mazeTexture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
@@ -124,8 +128,9 @@ void boreFrom(uint8_t* maze, int mazeW, int mazeH, int x, int y)
                 ++c;
                 printf("%.0f percent complete\n", (float)c/mazeH/mazeW*100);
                 node |= Directions[dir];
-                maze[mazeH*nx+ny] |= OppDirections[dir];
-                boreFrom(maze, mazeW, mazeH, nx, ny);
+                int shift = dir < 2 ? 2 : -2; //necessary shift to get opposite direction of dir
+                maze[mazeH*nx+ny] |= Directions[dir+shift];
+                boreFrom(&maze, mazeW, mazeH, nx, ny);
             }
         }
     }
