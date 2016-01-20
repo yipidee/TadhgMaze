@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <SDL.h>
+#include <SDL_image.h>
 
 //constants used to represent the 4 directions from each node
 const uint8_t Directions[] = {0x01, 0x02, 0x04, 0x08};        //N, E, S, W
@@ -90,6 +91,20 @@ int main(int args, char** argv)
     SDL_SetRenderTarget(renderer, NULL);
     //render maze texture to screen
     SDL_RenderCopy(renderer, mazeTexture, NULL, NULL);
+
+    //Get Tadhg into the game
+    IMG_Init(IMG_INIT_JPG);
+    SDL_Surface* tadhgSurf = IMG_Load("tadhg.jpg");
+    SDL_Texture* tadhg = SDL_CreateTextureFromSurface(renderer, tadhgSurf);
+    SDL_FreeSurface(tadhgSurf);
+
+    //random start point
+    int tadhgX = rand()%mazeW;
+    int tadhgY = rand()%mazeH;
+
+    SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
+    SDL_RenderCopy(renderer, tadhg, NULL, &destTadhg);
+
     //display renderer content
     SDL_RenderPresent(renderer);
 
