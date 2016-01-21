@@ -39,7 +39,7 @@ int main(int args, char** argv)
     }
 
     //starting position
-    //srand(10); // comment line out for random behaviour
+    srand(time(NULL));
 
     //starting positions for maze creation
     int x, y;
@@ -97,19 +97,37 @@ int main(int args, char** argv)
     SDL_Surface* tadhgSurf = IMG_Load("tadhg.jpg");
     SDL_Texture* tadhg = SDL_CreateTextureFromSurface(renderer, tadhgSurf);
     SDL_FreeSurface(tadhgSurf);
+    tadhgSurf = NULL;
+
+    //Get mama into the game
+    SDL_Surface* mamaSurf = IMG_Load("mama.jpg");
+    SDL_Texture* mama = SDL_CreateTextureFromSurface(renderer, mamaSurf);
+    SDL_FreeSurface(mamaSurf);
+    mamaSurf = NULL;
+
+    //Get complete into the game
+    SDL_Surface* completeSurf = IMG_Load("complete.jpg");
+    SDL_Texture* complete = SDL_CreateTextureFromSurface(renderer, completeSurf);
+    SDL_FreeSurface(completeSurf);
+    completeSurf = NULL;
 
     //random start point
-    int tadhgX = rand()%mazeW;
-    int tadhgY = rand()%mazeH;
+    int tadhgX = rand()%(mazeW/3);
+    int tadhgY = rand()%(mazeH/3);
+    int mamaX = (mazeW/2)+rand()%(mazeW/3);
+    int mamaY = (mazeH/2)+rand()%(mazeH/3);
 
     SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
     SDL_RenderCopy(renderer, tadhg, NULL, &destTadhg);
+    SDL_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
+    SDL_RenderCopy(renderer, mama, NULL, &destMama);
 
     //display renderer content
     SDL_RenderPresent(renderer);
 
     //SDL event loop
     bool quit = false;
+    bool noUpdate = false;
     SDL_Event e;
     while( !quit )
     {
@@ -121,14 +139,62 @@ int main(int args, char** argv)
             {
                 quit = true;
             }
+            else if( e.type == SDL_KEYDOWN )
+            {
+                //Select surfaces based on key press
+                switch( e.key.keysym.sym )
+                {
+                    case SDLK_UP:
+                        if(maze[tadhgX*mazeH+tadhgY]&Directions[0]) tadhgY-=1;
+                    break;
+
+                    case SDLK_DOWN:
+                        if(maze[tadhgX*mazeH+tadhgY]&Directions[2]) tadhgY+=1;
+                    break;
+
+                    case SDLK_LEFT:
+                        if(maze[tadhgX*mazeH+tadhgY]&Directions[3]) tadhgX-=1;
+                    break;
+
+                    case SDLK_RIGHT:
+                        if(maze[tadhgX*mazeH+tadhgY]&Directions[1]) tadhgX+=1;
+                    break;
+
+                    default:
+                    break;
+                }
+            }
         }
+        if(tadhgX==mamaX && tadhgY==mamaY)
+        {
+            SDL_RenderClear(renderer);
+            SDL_RenderCopy(renderer, complete, NULL, NULL);
+            noUpdate = true;
+        }
+        else if(!noUpdate)
+        {
+            SDL_RenderCopy(renderer, mazeTexture, NULL, NULL);
+            SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
+            SDL_RenderCopy(renderer, tadhg, NULL, &destTadhg);
+            SDL_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
+            SDL_RenderCopy(renderer, mama, NULL, &destMama);
+        }
+
+        //display renderer content
+        SDL_RenderPresent(renderer);
     }
 
     //free memory allocated for maze
     SDL_DestroyTexture(mazeTexture);
+    SDL_DestroyTexture(tadhg);
+    SDL_DestroyTexture(mama);
+    SDL_DestroyTexture(complete);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     mazeTexture=NULL;
+    tadhg=NULL;
+    mama=NULL;
+    complete=NULL;
     renderer=NULL;
     window=NULL;
     SDL_Quit();
