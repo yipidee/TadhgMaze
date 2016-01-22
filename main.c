@@ -38,7 +38,8 @@ int main(int args, char** argv)
     for(n=0; n<mazeW*mazeH; ++n) maze[n] = 0x00;
 
     //starting position
-    srand(time(NULL));
+    int seed = time(NULL);
+    srand(seed);
 
     //starting positions for maze creation
     int x, y;
@@ -182,6 +183,8 @@ int main(int args, char** argv)
         //display renderer content
         SDL_RenderPresent(renderer);
     }
+
+    printf("This maze can be replayed using the seed: %i\n", seed);
 
     //free memory allocated for maze
     SDL_DestroyTexture(mazeTexture);
