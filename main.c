@@ -4,18 +4,23 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <stdbool.h>
-#include <SDL2/SDL.h>
-#include <SDL_image.h>
+#include <time.h>
+#ifdef __linux
+    #include <SDL2/SDL.h>
+    #include <SDL2/SDL_image.h>
+#elif _WIN32
+    #include <SDL.h>
+    #include <SDL_image.h>
+#endif
 
 //constants used to represent the 4 directions from each node
-const uint8_t Directions[] = {0x01, 0x02, 0x04, 0x08};        //N, E, S, W
+const unsigned char Directions[] = {0x01, 0x02, 0x04, 0x08};        //N, E, S, W
 //array of x, y pairs representing physical movement in the N, E, S, W directions
 const int moveDir[] = {0,-1,1,0,0,1,-1,0};
 
 //function prototypes (the maze creator function)
-void boreFrom(uint8_t* maze, int mazeW, int mazeH, int x, int y);
+void boreFrom(unsigned char* maze, int mazeW, int mazeH, int x, int y);
 
 
 //Main
@@ -26,17 +31,11 @@ int main(int args, char** argv)
     const int mazeH = 25;
 
     //array to hold maze data
-    uint8_t maze[mazeW*mazeH];
+    unsigned char maze[mazeW*mazeH];
 
     //zero fill maze array
     int n,m;
-    for(n=0; n<mazeW; ++n)
-    {
-        for(m=0; m<mazeH; ++m)
-        {
-            maze[mazeH*n+m] = 0x00;
-        }
-    }
+    for(n=0; n<mazeW*mazeH; ++n) maze[n] = 0x00;
 
     //starting position
     srand(time(NULL));
@@ -94,19 +93,19 @@ int main(int args, char** argv)
 
     //Get Tadhg into the game
     IMG_Init(IMG_INIT_JPG);
-    SDL_Surface* tadhgSurf = IMG_Load("tadhg.jpg");
+    SDL_Surface* tadhgSurf = IMG_Load("./tadhg.jpg");
     SDL_Texture* tadhg = SDL_CreateTextureFromSurface(renderer, tadhgSurf);
     SDL_FreeSurface(tadhgSurf);
     tadhgSurf = NULL;
 
     //Get mama into the game
-    SDL_Surface* mamaSurf = IMG_Load("mama.jpg");
+    SDL_Surface* mamaSurf = IMG_Load("./mama.jpg");
     SDL_Texture* mama = SDL_CreateTextureFromSurface(renderer, mamaSurf);
     SDL_FreeSurface(mamaSurf);
     mamaSurf = NULL;
 
     //Get complete into the game
-    SDL_Surface* completeSurf = IMG_Load("complete.jpg");
+    SDL_Surface* completeSurf = IMG_Load("./complete.jpg");
     SDL_Texture* complete = SDL_CreateTextureFromSurface(renderer, completeSurf);
     SDL_FreeSurface(completeSurf);
     completeSurf = NULL;
@@ -203,7 +202,7 @@ int main(int args, char** argv)
 }
 
 //Maze carving function, uses recursive backtracking
-void boreFrom(uint8_t* maze, int mazeW, int mazeH, int x, int y)
+void boreFrom(unsigned char* maze, int mazeW, int mazeH, int x, int y)
 {
     static int c = 0;
     while((maze[mazeH*x+y]&0xF0)!=0xF0)
