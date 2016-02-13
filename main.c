@@ -23,9 +23,11 @@ const int moveDir[] = {0,-1,1,0,0,1,-1,0};
 void boreFrom(unsigned char* maze, int x, int y);
 int BSFsolve(unsigned char *maze, int startX, int startY, int endX, int endY);
 
+void testQ();
+
 //maze dimensions in nodes
-const int mazeW = 25;
-const int mazeH = 25;
+const int mazeW = 20;
+const int mazeH = 20;
 
 //Main
 int main(int args, char** argv)
@@ -51,8 +53,8 @@ int main(int args, char** argv)
 
     //function to create a texture representation of the maze
     //initialise SDL, create window, get renderer and set to render to texture
-    int textureW = 500;
-    int textureH = 500;
+    int textureW = 800;
+    int textureH = 800;
 
     //SDL init
     SDL_Init(SDL_INIT_VIDEO);
@@ -118,8 +120,8 @@ int main(int args, char** argv)
     int mamaY = (mazeH/2)+rand()%(mazeH/3);
 
     //Computer solve, consider running this in parallel
-    //int noMoves = BSFsolve(&maze, tadhgX, tadhgY, mamaX, mamaY);
-    //printf("at least %i moves to finish\n", noMoves);
+    int noMoves = BSFsolve(&maze, tadhgX, tadhgY, mamaX, mamaY);
+    printf("at least %i moves to finish\n", noMoves);
 
     SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
     SDL_RenderCopy(renderer, tadhg, NULL, &destTadhg);
@@ -275,7 +277,7 @@ void Q_enqueue(Queue* q, Node n)
     else
     {
         q->tail++;
-        if(q->tail >= &q->nodes[MAX_QUEUE_LENGTH]) q->tail = &q->nodes[0];
+        if(q->tail > &q->nodes[MAX_QUEUE_LENGTH - 1]) q->tail = &q->nodes[0];
         if(q->tail != q->head)
         {
             *(q->tail) = n;
@@ -294,9 +296,9 @@ Node Q_dequeue(Queue* q)
     Node res = NULL_NODE;
     if(q->head != NULL) res = *(q->head);
     q->head++;
-    if(q->head > q->tail)
+    if(q->head == q->tail+1 )
     {
-        printf("Queue is emplty\n");
+        printf("Queue is emptied\n");
         q->head = NULL;
         q->tail = NULL;
     }
@@ -328,10 +330,10 @@ void enqueueChildren(Queue* q, unsigned char* maze, Node n)
             child.parentDirection = i < 2 ? i + 2 : i - 2;
             child.x = n.x;
             child.y = n.y;
-            if(i = 0) child.y--;
-            if(i=1) child.x++;
-            if(i=2) child.y++;
-            if(i=3) child.x--;
+            if(i==0) child.y--;
+            if(i==1) child.x++;
+            if(i==2) child.y++;
+            if(i==3) child.x--;
             Q_enqueue(q, child);
         }
     }
@@ -351,12 +353,15 @@ int BSFsolve(unsigned char *maze, int startX, int startY, int endX, int endY)
     while(Q_notEmpty(&q))
     {
         Node n = Q_dequeue(&q);
-        if(isNodeAtXY(n, endX, endY))
+        if(!isNodeAtXY(n, NULL_NODE.x, NULL_NODE.y))
         {
-            return n.level;
-        }else
-        {
-            enqueueChildren(&q, maze, n);
+            if(isNodeAtXY(n, endX, endY))
+            {
+                return n.level;
+            }else
+            {
+                enqueueChildren(&q, maze, n);
+            }
         }
     }
     return -1;
