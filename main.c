@@ -229,6 +229,7 @@ void boreFrom(unsigned char* maze, int mazeW, int mazeH, int x, int y)
     }
 }
 
+/*
 //***functions for computer to solve maze***
 //Queue to use for BFS search
 typedef struct Node
@@ -281,3 +282,4 @@ Node Queue_dequeue(Queue* q)
     }
     return res;
 }
+*/
