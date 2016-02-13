@@ -20,16 +20,18 @@ const unsigned char Directions[] = {0x01, 0x02, 0x04, 0x08};        //N, E, S, W
 const int moveDir[] = {0,-1,1,0,0,1,-1,0};
 
 //function prototypes (the maze creator function)
-void boreFrom(unsigned char* maze, int mazeW, int mazeH, int x, int y);
+void boreFrom(unsigned char* maze, int x, int y);
+int BSFsolve(unsigned char *maze, int startX, int startY, int endX, int endY);
 
+void testQ();
+
+//maze dimensions in nodes
+const int mazeW = 20;
+const int mazeH = 20;
 
 //Main
 int main(int args, char** argv)
 {
-    //maze dimensions in nodes
-    const int mazeW = 25;
-    const int mazeH = 25;
-
     //array to hold maze data
     unsigned char maze[mazeW*mazeH];
 
@@ -47,12 +49,12 @@ int main(int args, char** argv)
     y = rand()%mazeH;
 
     //recursive function that carves maze starting at the specified point
-    boreFrom(&maze, mazeW, mazeH, x, y);
+    boreFrom(&maze, x, y);
 
     //function to create a texture representation of the maze
     //initialise SDL, create window, get renderer and set to render to texture
-    int textureW = 500;
-    int textureH = 500;
+    int textureW = 800;
+    int textureH = 800;
 
     //SDL init
     SDL_Init(SDL_INIT_VIDEO);
@@ -116,6 +118,10 @@ int main(int args, char** argv)
     int tadhgY = rand()%(mazeH/3);
     int mamaX = (mazeW/2)+rand()%(mazeW/3);
     int mamaY = (mazeH/2)+rand()%(mazeH/3);
+
+    //Computer solve, consider running this in parallel
+    int noMoves = BSFsolve(&maze, tadhgX, tadhgY, mamaX, mamaY);
+    printf("at least %i moves to finish\n", noMoves);
 
     SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
     SDL_RenderCopy(renderer, tadhg, NULL, &destTadhg);
@@ -205,7 +211,7 @@ int main(int args, char** argv)
 }
 
 //Maze carving function, uses recursive backtracking
-void boreFrom(unsigned char* maze, int mazeW, int mazeH, int x, int y)
+void boreFrom(unsigned char* maze, int x, int y)
 {
     //static int c = 0;
     while((maze[mazeH*x+y]&0xF0)!=0xF0)
@@ -223,15 +229,18 @@ void boreFrom(unsigned char* maze, int mazeW, int mazeH, int x, int y)
                 maze[mazeH*x+y] |= Directions[dir];
                 int shift = dir < 2 ? 2 : -2; //necessary shift to get opposite direction of dir
                 maze[mazeH*nx+ny] |= Directions[dir+shift];
-                boreFrom(maze, mazeW, mazeH, nx, ny);
+                boreFrom(maze, nx, ny);
             }
         }
     }
 }
 
-/*
+
 //***functions for computer to solve maze***
 //Queue to use for BFS search
+#define ROOT_NODE_PARENT_DIRECTION -3
+#define MAX_QUEUE_LENGTH 250
+
 typedef struct Node
 {
     int level;
@@ -239,47 +248,121 @@ typedef struct Node
     int x, y;
 } Node;
 
+Node NULL_NODE = {-1, -1, -1, -1};
+
 typedef struct Queue
 {
-    Node nodes[50];
-    Node* head = NULL;
-    Node* tail = NULL;
+    Node nodes[MAX_QUEUE_LENGTH];
+    Node* head;
+    Node* tail;
 } Queue;
 
-void Queue_queue(Queue* q, Node n)
+Queue Q_init()
+{
+    Queue q;
+    q.head = NULL;
+    q.tail = NULL;
+    return q;
+}
+
+void Q_enqueue(Queue* q, Node n)
 {
     if (q->head == NULL)
     {
         q->nodes[0] = n;
-        q->head = q->nodes;
-        q->tail = q->nodes;
+        q->head = &q->nodes[0];
+        q->tail = &q->nodes[0];
     }
     else
     {
-        q->tail += 1;
-        if((q->tail - q->nodes) >= 50) q->tail = q->nodes;
+        q->tail++;
+        if(q->tail > &q->nodes[MAX_QUEUE_LENGTH - 1]) q->tail = &q->nodes[0];
         if(q->tail != q->head)
         {
             *(q->tail) = n;
         }
         else
         {
-            q->tail -= 1;
-            if(q->tail < q->nodes) q->tail = &q->nodes[49];
+            printf("Queue is full\n");
+            q->tail--;
+            if(q->tail < &q->nodes[0]) q->tail = &q->nodes[MAX_QUEUE_LENGTH - 1];
         }
     }
 }
 
-Node Queue_dequeue(Queue* q)
+Node Q_dequeue(Queue* q)
 {
-    Node res = NULL;
+    Node res = NULL_NODE;
     if(q->head != NULL) res = *(q->head);
-    q->head += 1;
-    if(q->head > q->tail)
+    q->head++;
+    if(q->head == q->tail+1 )
     {
+        printf("Queue is emptied\n");
         q->head = NULL;
         q->tail = NULL;
     }
     return res;
 }
-*/
+
+bool Q_notEmpty(Queue* q)
+{
+    bool res = q->head == NULL ? false : true;
+    return res;
+}
+
+bool isNodeAtXY(Node n, int x, int y)
+{
+    bool res = ((n.x == x) && (n.y == y)) ? true : false;
+    return res;
+}
+
+void enqueueChildren(Queue* q, unsigned char* maze, Node n)
+{
+    unsigned char pos = maze[n.x*mazeH + n.y];
+    int i;
+    for(i = 0; i<4 ; ++i)
+    {
+        if(((pos&Directions[i])==Directions[i]) && (i!=n.parentDirection))
+        {
+            Node child;
+            child.level = n.level + 1;
+            child.parentDirection = i < 2 ? i + 2 : i - 2;
+            child.x = n.x;
+            child.y = n.y;
+            if(i==0) child.y--;
+            if(i==1) child.x++;
+            if(i==2) child.y++;
+            if(i==3) child.x--;
+            Q_enqueue(q, child);
+        }
+    }
+}
+
+int BSFsolve(unsigned char *maze, int startX, int startY, int endX, int endY)
+{
+    Node root;
+    root.level = 0;
+    root.parentDirection = ROOT_NODE_PARENT_DIRECTION;
+    root.x=startX;
+    root.y=startY;
+
+    Queue q = Q_init();
+    Q_enqueue(&q, root);
+
+    while(Q_notEmpty(&q))
+    {
+        Node n = Q_dequeue(&q);
+        if(!isNodeAtXY(n, NULL_NODE.x, NULL_NODE.y))
+        {
+            if(isNodeAtXY(n, endX, endY))
+            {
+                return n.level;
+            }else
+            {
+                enqueueChildren(&q, maze, n);
+            }
+        }
+    }
+    return -1;
+}
+
