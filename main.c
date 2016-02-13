@@ -1,6 +1,6 @@
 /* Randomly created maze using recursive backtracking.
  * Play as Tadhg, trying to get to mama
- */
+**/
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -207,7 +207,7 @@ int main(int args, char** argv)
 //Maze carving function, uses recursive backtracking
 void boreFrom(unsigned char* maze, int mazeW, int mazeH, int x, int y)
 {
-    static int c = 0;
+    //static int c = 0;
     while((maze[mazeH*x+y]&0xF0)!=0xF0)
     {
         int dir = rand()%4;
@@ -218,8 +218,8 @@ void boreFrom(unsigned char* maze, int mazeW, int mazeH, int x, int y)
             int ny = y + moveDir[dir*2+1];
             if(nx >= 0 && ny >= 0 && nx < mazeW && ny < mazeH && (maze[mazeH*nx+ny]&0x0F)==0x00)
             {
-                ++c;
-                printf("%.0f percent complete\n", (float)c/mazeH/mazeW*100);
+                //++c;
+                //printf("%.0f percent complete\n", (float)c/mazeH/mazeW*100);
                 maze[mazeH*x+y] |= Directions[dir];
                 int shift = dir < 2 ? 2 : -2; //necessary shift to get opposite direction of dir
                 maze[mazeH*nx+ny] |= Directions[dir+shift];
@@ -227,4 +227,57 @@ void boreFrom(unsigned char* maze, int mazeW, int mazeH, int x, int y)
             }
         }
     }
+}
+
+//***functions for computer to solve maze***
+//Queue to use for BFS search
+typedef struct Node
+{
+    int level;
+    int parentDirection;
+    int x, y;
+} Node;
+
+typedef struct Queue
+{
+    Node nodes[50];
+    Node* head = NULL;
+    Node* tail = NULL;
+} Queue;
+
+void Queue_queue(Queue* q, Node n)
+{
+    if (q->head == NULL)
+    {
+        q->nodes[0] = n;
+        q->head = q->nodes;
+        q->tail = q->nodes;
+    }
+    else
+    {
+        q->tail += 1;
+        if((q->tail - q->nodes) >= 50) q->tail = q->nodes;
+        if(q->tail != q->head)
+        {
+            *(q->tail) = n;
+        }
+        else
+        {
+            q->tail -= 1;
+            if(q->tail < q->nodes) q->tail = &q->nodes[49];
+        }
+    }
+}
+
+Node Queue_dequeue(Queue* q)
+{
+    Node res = NULL;
+    if(q->head != NULL) res = *(q->head);
+    q->head += 1;
+    if(q->head > q->tail)
+    {
+        q->head = NULL;
+        q->tail = NULL;
+    }
+    return res;
 }
