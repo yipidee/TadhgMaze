@@ -53,8 +53,8 @@ int main(int args, char** argv)
 
     //function to create a texture representation of the maze
     //initialise SDL, create window, get renderer and set to render to texture
-    int textureW = 800;
-    int textureH = 800;
+    int textureW = 580;
+    int textureH = 580;
 
     //SDL init
     SDL_Init(SDL_INIT_VIDEO);
@@ -135,6 +135,7 @@ int main(int args, char** argv)
     bool quit = false;
     bool noUpdate = false;
     SDL_Event e;
+    int totalMoves = 0;
     while( !quit )
     {
         //Handle events on queue
@@ -151,19 +152,19 @@ int main(int args, char** argv)
                 switch( e.key.keysym.sym )
                 {
                     case SDLK_UP:
-                        if(maze[tadhgX*mazeH+tadhgY]&Directions[0]) tadhgY-=1;
+                        if(maze[tadhgX*mazeH+tadhgY]&Directions[0]) {tadhgY-=1; totalMoves++;}
                     break;
 
                     case SDLK_DOWN:
-                        if(maze[tadhgX*mazeH+tadhgY]&Directions[2]) tadhgY+=1;
+                        if(maze[tadhgX*mazeH+tadhgY]&Directions[2]) {tadhgY+=1; totalMoves++;}
                     break;
 
                     case SDLK_LEFT:
-                        if(maze[tadhgX*mazeH+tadhgY]&Directions[3]) tadhgX-=1;
+                        if(maze[tadhgX*mazeH+tadhgY]&Directions[3]) {tadhgX-=1; totalMoves++;}
                     break;
 
                     case SDLK_RIGHT:
-                        if(maze[tadhgX*mazeH+tadhgY]&Directions[1]) tadhgX+=1;
+                        if(maze[tadhgX*mazeH+tadhgY]&Directions[1]) {tadhgX+=1; totalMoves++;}
                     break;
 
                     default:
@@ -191,6 +192,7 @@ int main(int args, char** argv)
     }
 
     printf("This maze can be replayed using the seed: %i\n", seed);
+    printf("You completed this maze with %.1f percent efficiency\n", 100*(float)noMoves/(float)totalMoves);
 
     //free memory allocated for maze
     SDL_DestroyTexture(mazeTexture);
@@ -239,7 +241,7 @@ void boreFrom(unsigned char* maze, int x, int y)
 //***functions for computer to solve maze***
 //Queue to use for BFS search
 #define ROOT_NODE_PARENT_DIRECTION -3
-#define MAX_QUEUE_LENGTH 250
+#define MAX_QUEUE_LENGTH 10
 
 typedef struct Node
 {
@@ -288,18 +290,25 @@ void Q_enqueue(Queue* q, Node n)
             if(q->tail < &q->nodes[0]) q->tail = &q->nodes[MAX_QUEUE_LENGTH - 1];
         }
     }
+    //printf("head points to %#0x8, tail points to %#0x8\n", q->head, q->tail);
 }
 
 Node Q_dequeue(Queue* q)
 {
     Node res = NULL_NODE;
-    if(q->head != NULL) res = *(q->head);
-    q->head++;
-    if(q->head == q->tail+1 )
+    if(q->head != NULL)
     {
-        printf("Queue is emptied\n");
-        q->head = NULL;
-        q->tail = NULL;
+        res = *(q->head);
+        q->head++;
+        if(q->head > &q->nodes[MAX_QUEUE_LENGTH - 1]) q->head = &q->nodes[0];
+        if(q->head == q->tail+1 || (q->tail == &q->nodes[MAX_QUEUE_LENGTH - 1] && q->head == &q->nodes[0]))
+        {
+            q->head = NULL;
+            q->tail = NULL;
+        }
+    }else
+    {
+        printf("Empty queue!\n");
     }
     return res;
 }
@@ -365,4 +374,3 @@ int BSFsolve(unsigned char *maze, int startX, int startY, int endX, int endY)
     }
     return -1;
 }
-
