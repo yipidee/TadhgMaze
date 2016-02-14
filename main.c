@@ -9,9 +9,11 @@
 #ifdef __linux
     #include <SDL2/SDL.h>
     #include <SDL2/SDL_image.h>
+    #include <SDL2/SDL_ttf.h>
 #elif _WIN32
     #include <SDL.h>
     #include <SDL_image.h>
+    #include <SDL_ttf.h>
 #endif
 
 //constants used to represent the 4 directions from each node
@@ -113,6 +115,16 @@ int main(int args, char** argv)
     SDL_FreeSurface(completeSurf);
     completeSurf = NULL;
 
+    //Get congrats text texture
+    TTF_Init();
+    TTF_Font* myFont = TTF_OpenFont("./Yantiq.ttf", 62);
+    SDL_Color textColour = {0, 255 , 255};
+    SDL_Surface* completeTextSurf = TTF_RenderText_Blended(myFont, "Tadhg's safe! Yeah!", textColour);
+    SDL_Texture* completeText = SDL_CreateTextureFromSurface(renderer, completeTextSurf);
+    SDL_Rect textRect = {(580 - completeTextSurf->w)/2, (580 - completeTextSurf->h)/2, completeTextSurf->w, completeTextSurf->h};
+    SDL_FreeSurface(completeTextSurf);
+    completeTextSurf = NULL;
+
     //random start point
     int tadhgX = rand()%(mazeW/3);
     int tadhgY = rand()%(mazeH/3);
@@ -172,10 +184,12 @@ int main(int args, char** argv)
                 }
             }
         }
-        if(tadhgX==mamaX && tadhgY==mamaY)
+        if(!noUpdate && tadhgX==mamaX && tadhgY==mamaY)
         {
             SDL_RenderClear(renderer);
             SDL_RenderCopy(renderer, complete, NULL, NULL);
+            SDL_RenderCopy(renderer, completeText, NULL, &textRect);
+            printf("You completed this maze with %.1f percent efficiency\n", 100*(float)noMoves/(float)totalMoves);
             noUpdate = true;
         }
         else if(!noUpdate)
@@ -192,21 +206,26 @@ int main(int args, char** argv)
     }
 
     printf("This maze can be replayed using the seed: %i\n", seed);
-    printf("You completed this maze with %.1f percent efficiency\n", 100*(float)noMoves/(float)totalMoves);
 
     //free memory allocated for maze
     SDL_DestroyTexture(mazeTexture);
     SDL_DestroyTexture(tadhg);
     SDL_DestroyTexture(mama);
     SDL_DestroyTexture(complete);
+    SDL_DestroyTexture(completeText);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     mazeTexture=NULL;
     tadhg=NULL;
     mama=NULL;
     complete=NULL;
+    completeText = NULL;
     renderer=NULL;
     window=NULL;
+    TTF_CloseFont(myFont);
+    myFont = NULL;
+    TTF_Quit();
+    IMG_Quit();
     SDL_Quit();
 
     return 0;
