@@ -22,14 +22,66 @@ const int moveDir[] = {0,-1,1,0,0,1,-1,0};
 
 //function prototypes (the maze creator function)
 void boreFrom(unsigned char* maze, int x, int y);
+//maze solver used in calculating score
 int BSFsolve(unsigned char *maze, int startX, int startY, int endX, int endY);
 
-//maze dimensions in nodes
-const int mazeW = 20;
-const int mazeH = 20;
+typedef enum
+{
+    STATE_INTRO,
+    STATE_PLAY,
+    STATE_COMPLETE,
+    STATE_QUIT
+}GAME_STATE;
 
-//Main
+//maze dimensions in nodes
+const int mazeW = 10;
+const int mazeH = 10;
+const int textureW = 580;
+const int textureH = 580;
+
+//functions equating to games states, and finite state machine
+GAME_STATE intro(void);
+GAME_STATE play(void);
+GAME_STATE complete(void);
+GAME_STATE quit(void);
+
+GAME_STATE (*FST[])(void) = {&intro, &play, &complete};
+
+//global variables
+SDL_Window* window;
+SDL_Renderer* renderer;
+int noMoves;
+int totalMoves;
+
 int main(int args, char** argv)
+{
+    //SDL init
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
+
+    //init SDL window and renderer
+    window = SDL_CreateWindow("Tadhg Maze Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, textureW, textureH, SDL_WINDOW_SHOWN);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
+
+    //set current state to INTRO screen
+    GAME_STATE currentState = STATE_INTRO;
+
+    while(currentState != STATE_QUIT)
+    {
+        currentState = FST[currentState]();
+    }
+
+    TTF_Quit();
+    IMG_Quit();
+    SDL_Quit();
+}
+
+GAME_STATE intro()
+{
+    return STATE_PLAY;
+}
+
+GAME_STATE play()
 {
     //array to hold maze data
     unsigned char maze[mazeW*mazeH];
@@ -50,18 +102,7 @@ int main(int args, char** argv)
     //recursive function that carves maze starting at the specified point
     boreFrom(&maze, x, y);
 
-    //function to create a texture representation of the maze
-    //initialise SDL, create window, get renderer and set to render to texture
-    int textureW = 580;
-    int textureH = 580;
-
-    //SDL init
-    SDL_Init(SDL_INIT_VIDEO);
-    SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
-
     //Create window renderer and blank texture
-    SDL_Window* window = SDL_CreateWindow("Tadhg Maze Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, textureW, textureH, SDL_WINDOW_SHOWN);
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
     SDL_Texture* mazeTexture = SDL_CreateTexture(renderer,SDL_GetWindowPixelFormat(window),SDL_TEXTUREACCESS_TARGET,textureW,textureH);
 
     //Set rendering target to blank texture and clear
@@ -106,18 +147,6 @@ int main(int args, char** argv)
     SDL_FreeSurface(mamaSurf);
     mamaSurf = NULL;
 
-    //Get complete into the game
-    SDL_Surface* completeSurf = IMG_Load("./complete.jpg");
-    SDL_Texture* complete = SDL_CreateTextureFromSurface(renderer, completeSurf);
-    SDL_FreeSurface(completeSurf);
-    completeSurf = NULL;
-
-    //Get congrats text texture
-    TextLabel completion = TL_createTextLabel("Tadhg's safe! Yeah!", 0, 0);
-    TL_setFontSize(&completion, 64);
-    TL_setX(&completion, (textureW-completion.w)/2);
-    TL_setY(&completion, 5*(textureH-completion.h)/6);
-
     //random start point
     int tadhgX = rand()%(mazeW/3);
     int tadhgY = rand()%(mazeH/3);
@@ -125,7 +154,7 @@ int main(int args, char** argv)
     int mamaY = (mazeH/2)+rand()%(mazeH/3);
 
     //Computer solve, consider running this in parallel
-    int noMoves = BSFsolve(&maze, tadhgX, tadhgY, mamaX, mamaY);
+    noMoves = BSFsolve(&maze, tadhgX, tadhgY, mamaX, mamaY);
     printf("at least %i moves to finish\n", noMoves);
 
     SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
@@ -138,10 +167,9 @@ int main(int args, char** argv)
 
     //SDL event loop
     bool quit = false;
-    bool noUpdate = false;
     SDL_Event e;
-    int totalMoves = 0;
-    while( !quit )
+    totalMoves = 0;
+    while( true )
     {
         //Handle events on queue
         while( SDL_PollEvent( &e ) != 0 )
@@ -172,52 +200,104 @@ int main(int args, char** argv)
                         if(maze[tadhgX*mazeH+tadhgY]&Directions[1]) {tadhgX+=1; totalMoves++;}
                     break;
 
+                    case SDLK_ESCAPE:
+                        quit = true;
+
                     default:
                     break;
                 }
             }
         }
-        if(!noUpdate && tadhgX==mamaX && tadhgY==mamaY)
+
+        if(quit || (tadhgX==mamaX && tadhgY==mamaY))
         {
-            SDL_RenderClear(renderer);
-            SDL_RenderCopy(renderer, complete, NULL, NULL);
-            TL_renderTextLabel(&completion, renderer);
-            printf("You completed this maze with %.1f percent efficiency\n", 100*(float)noMoves/(float)totalMoves);
-            noUpdate = true;
+            //free memory allocated for maze
+            SDL_DestroyTexture(mazeTexture);
+            SDL_DestroyTexture(tadhg);
+            SDL_DestroyTexture(mama);
+            mazeTexture=NULL;
+            tadhg=NULL;
+            mama=NULL;
+            TTF_Quit();
+            IMG_Quit();
+            if(quit) return STATE_QUIT;
+            return STATE_COMPLETE;
         }
-        else if(!noUpdate)
-        {
-            SDL_RenderCopy(renderer, mazeTexture, NULL, NULL);
-            SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
-            SDL_RenderCopy(renderer, tadhg, NULL, &destTadhg);
-            SDL_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
-            SDL_RenderCopy(renderer, mama, NULL, &destMama);
-        }
+        SDL_RenderCopy(renderer, mazeTexture, NULL, NULL);
+        SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
+        SDL_RenderCopy(renderer, tadhg, NULL, &destTadhg);
+        SDL_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
+        SDL_RenderCopy(renderer, mama, NULL, &destMama);
 
         //display renderer content
         SDL_RenderPresent(renderer);
     }
+}
 
-    printf("This maze can be replayed using the seed: %i\n", seed);
+GAME_STATE complete()
+{
+    //Get complete into the game
+    SDL_Surface* completeSurf = IMG_Load("./complete.jpg");
+    SDL_Texture* complete = SDL_CreateTextureFromSurface(renderer, completeSurf);
+    SDL_FreeSurface(completeSurf);
+    completeSurf = NULL;
 
-    //free memory allocated for maze
-    SDL_DestroyTexture(mazeTexture);
-    SDL_DestroyTexture(tadhg);
-    SDL_DestroyTexture(mama);
-    SDL_DestroyTexture(complete);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    mazeTexture=NULL;
-    tadhg=NULL;
-    mama=NULL;
-    complete=NULL;
-    renderer=NULL;
-    window=NULL;
-    TTF_Quit();
-    IMG_Quit();
-    SDL_Quit();
+    //Get congrats text texture
+    TextLabel completion = TL_createTextLabel("Tadhg's safe! Yeah!", 0, 0);
+    TL_setFontSize(completion, 64);
+    TL_setX(completion, (textureW-TL_getWidth(completion))/2);
+    TL_setY(completion, (textureH-TL_getHeight(completion))/6);
 
-    return 0;
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, complete, NULL, NULL);
+    TL_renderTextLabel(completion, renderer);
+
+    //label to write score to screen
+    char score[50];
+    snprintf(score, 50, "Your score this time: %.0f/100", 100*(float)noMoves/(float)totalMoves);
+    TextLabel scoreLabel = TL_createTextLabel(score, 0, 0);
+    TL_setFontSize(scoreLabel, 42);
+    TL_setX(scoreLabel, (textureW-TL_getWidth(scoreLabel))/2);
+    TL_setY(scoreLabel, (textureH-TL_getHeight(scoreLabel))/2);
+    TL_renderTextLabel(scoreLabel, renderer);
+    TL_setText(scoreLabel, "Press 'Q' to quit");
+    TL_setX(scoreLabel, (textureW-TL_getWidth(scoreLabel))/2);
+    TL_setY(scoreLabel, 7*(textureH-TL_getHeight(scoreLabel))/9);
+    TL_renderTextLabel(scoreLabel, renderer);
+    TL_destroyTextLabel(scoreLabel);
+
+    SDL_RenderPresent(renderer);
+
+    while( true )
+    {
+        //Handle events on queue
+        SDL_Event e;
+        while( SDL_PollEvent( &e ) != 0 )
+        {
+            //User requests quit
+            if( e.type == SDL_QUIT )
+            {
+                return STATE_QUIT;
+            }
+            else if( e.type == SDL_KEYDOWN )
+            {
+                //Select surfaces based on key press
+                switch( e.key.keysym.sym )
+                {
+                    case SDLK_q:
+                        return STATE_QUIT;
+                        break;
+
+                    case SDLK_RETURN:
+                        return STATE_PLAY;
+                        break;
+
+                    default:
+                    break;
+                }
+            }
+        }
+    }
 }
 
 //Maze carving function, uses recursive backtracking
