@@ -29,35 +29,37 @@
 #define MAX_TEXT_LABEL_LENGTH 128
 
 //Data structure for holding TextLabel data
-typedef struct TextLabel
-{
-    char mText[MAX_TEXT_LABEL_LENGTH]; //The actual label text
-    int x, y, w, h;             //The position and size of label
-    int mCurrLength;            //length of stored text
-    TTF_Font* mFont;            //Font used for rendering text
-    int mTextSize;              //Text point size
-    SDL_Color mFontColour;      //Text colour
-    bool _initialised;          //flag to show whether initialised
-    SDL_Surface* textSurf;
-} TextLabel;
+typedef struct _TextLabel* TextLabel;
 
 //Creates a label with text at pos x and y
 TextLabel TL_createTextLabel(char* text, int x, int y);
 
+//Releases resources used by text label
+void TL_destroyTextLabel(TextLabel tl);
+
+//Render label to screen
+void TL_renderTextLabel(TextLabel tl, SDL_Renderer* renderer);
+
 //Sets tl's text data
-void TL_setText(TextLabel* tl, char* text);
+void TL_setText(TextLabel tl, char* text);
 
 //Set the font to be used for the TextLabel
-void TL_setFont(TextLabel* tl, char* pathToFont);
+void TL_setFont(TextLabel tl, char* pathToFont);
 
 //Get pointer to bounding rect
-SDL_Rect TL_getBoundRect(TextLabel* tl);
+SDL_Rect TL_getBoundRect(TextLabel tl);
 
 //Set font size
-void TL_setFontSize(TextLabel* tl, int fSize);
+void TL_setFontSize(TextLabel tl, int fSize);
 
 //set x
-void TL_setX(TextLabel* tl, int x);
+void TL_setX(TextLabel tl, int x);
 
 //set y
-void TL_setY(TextLabel* tl, int y);
+void TL_setY(TextLabel tl, int y);
+
+//get width of text label
+int TL_getWidth(TextLabel tl);
+
+//get Height of text label
+int TL_getHeight(TextLabel tl);
