@@ -127,6 +127,18 @@ void TL_setY(TextLabel tl, int y)
     tl->y = y;
 }
 
+//get x
+int TL_getX(TextLabel tl)
+{
+    return tl->x;
+}
+
+//get y
+int TL_getY(TextLabel tl)
+{
+    return tl->y;
+}
+
 //get width of text label
 int TL_getWidth(TextLabel tl)
 {

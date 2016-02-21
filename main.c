@@ -14,6 +14,7 @@
     #include <SDL_image.h>
 #endif
 #include "TextLabel.h"
+#include "Queue.h"
 
 //constants used to represent the 4 directions from each node
 const unsigned char Directions[] = {0x01, 0x02, 0x04, 0x08};        //N, E, S, W
@@ -39,13 +40,10 @@ const int mazeH = 10;
 const int textureW = 580;
 const int textureH = 580;
 
-//functions equating to games states, and finite state machine
+//functions equating to games states
 GAME_STATE intro(void);
 GAME_STATE play(void);
 GAME_STATE complete(void);
-GAME_STATE quit(void);
-
-GAME_STATE (*FST[])(void) = {&intro, &play, &complete};
 
 //global variables
 SDL_Window* window;
@@ -63,14 +61,23 @@ int main(int args, char** argv)
     window = SDL_CreateWindow("Tadhg Maze Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, textureW, textureH, SDL_WINDOW_SHOWN);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
 
+    //finite state machine linking game states
+    GAME_STATE (*FST[])(void) = {&intro, &play, &complete};
+
     //set current state to INTRO screen
     GAME_STATE currentState = STATE_INTRO;
 
+    //run through states until quit state initiated
     while(currentState != STATE_QUIT)
     {
         currentState = FST[currentState]();
     }
 
+    //games has ended, release resources
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    renderer = NULL;
+    window = NULL;
     TTF_Quit();
     IMG_Quit();
     SDL_Quit();
@@ -78,6 +85,7 @@ int main(int args, char** argv)
 
 GAME_STATE intro()
 {
+    //TODO: make intro screen
     return STATE_PLAY;
 }
 
@@ -162,6 +170,14 @@ GAME_STATE play()
     SDL_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
     SDL_RenderCopy(renderer, mama, NULL, &destMama);
 
+    //label to show total moves made
+    TextLabel movesMadeLabel = TL_createTextLabel("Moves made: 0", 0, 0);
+    TL_setFontSize(movesMadeLabel, 24);
+    TL_setX(movesMadeLabel, textureW - TL_getWidth(movesMadeLabel)-25);
+    TL_setY(movesMadeLabel, 10);
+    TL_renderTextLabel(movesMadeLabel, renderer);
+    char movesMadeText[18]; //used later to vary content of the above label
+
     //display renderer content
     SDL_RenderPresent(renderer);
 
@@ -218,16 +234,19 @@ GAME_STATE play()
             mazeTexture=NULL;
             tadhg=NULL;
             mama=NULL;
-            TTF_Quit();
-            IMG_Quit();
-            if(quit) return STATE_QUIT;
-            return STATE_COMPLETE;
+            TL_destroyTextLabel(movesMadeLabel);
+            GAME_STATE retVal = quit ? STATE_QUIT : STATE_COMPLETE;
+            return retVal;
         }
         SDL_RenderCopy(renderer, mazeTexture, NULL, NULL);
         SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
         SDL_RenderCopy(renderer, tadhg, NULL, &destTadhg);
         SDL_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
         SDL_RenderCopy(renderer, mama, NULL, &destMama);
+
+        snprintf(movesMadeText, 18, "Moves made: %i", totalMoves);
+        TL_setText(movesMadeLabel, movesMadeText);
+        TL_renderTextLabel(movesMadeLabel, renderer);
 
         //display renderer content
         SDL_RenderPresent(renderer);
@@ -260,15 +279,37 @@ GAME_STATE complete()
     TL_setX(scoreLabel, (textureW-TL_getWidth(scoreLabel))/2);
     TL_setY(scoreLabel, (textureH-TL_getHeight(scoreLabel))/2);
     TL_renderTextLabel(scoreLabel, renderer);
-    TL_setText(scoreLabel, "Press 'Q' to quit");
-    TL_setX(scoreLabel, (textureW-TL_getWidth(scoreLabel))/2);
-    TL_setY(scoreLabel, 7*(textureH-TL_getHeight(scoreLabel))/9);
-    TL_renderTextLabel(scoreLabel, renderer);
-    TL_destroyTextLabel(scoreLabel);
 
+    TextLabel quitMessage = TL_createTextLabel("Press 'Q' to quit", 0, 0);
+    TextLabel contMessage = TL_createTextLabel("Press Enter to play new Maze", 0, 0);
+    TL_setFontSize(quitMessage, 38);
+    TL_setFontSize(contMessage, 38);
+    TL_setX(quitMessage, (textureW-TL_getWidth(quitMessage))/2);
+    TL_setY(quitMessage, 7*(textureH-TL_getHeight(quitMessage))/9);
+    TL_setX(contMessage, (textureW-TL_getWidth(contMessage))/2);
+    TL_setY(contMessage, TL_getY(quitMessage)+TL_getHeight(quitMessage));
+
+    TL_renderTextLabel(quitMessage, renderer);
+    TL_renderTextLabel(contMessage, renderer);
+
+    //render the complete maze screen
     SDL_RenderPresent(renderer);
 
-    while( true )
+    //all resources can be destroyed since already rendered
+    SDL_DestroyTexture(complete);
+    complete = NULL;
+    TL_destroyTextLabel(completion);
+    TL_destroyTextLabel(scoreLabel);
+    TL_destroyTextLabel(quitMessage);
+    TL_destroyTextLabel(contMessage);
+    completion = NULL;
+    scoreLabel = NULL;
+    quitMessage = NULL;
+    contMessage = NULL;
+
+    GAME_STATE choice;
+    bool choiceMade = false;
+    while( !choiceMade )
     {
         //Handle events on queue
         SDL_Event e;
@@ -277,7 +318,8 @@ GAME_STATE complete()
             //User requests quit
             if( e.type == SDL_QUIT )
             {
-                return STATE_QUIT;
+                choiceMade = true;
+                choice = STATE_QUIT;
             }
             else if( e.type == SDL_KEYDOWN )
             {
@@ -285,11 +327,13 @@ GAME_STATE complete()
                 switch( e.key.keysym.sym )
                 {
                     case SDLK_q:
-                        return STATE_QUIT;
+                        choiceMade = true;
+                        choice = STATE_QUIT;
                         break;
 
                     case SDLK_RETURN:
-                        return STATE_PLAY;
+                        choiceMade = true;
+                        choice = STATE_PLAY;
                         break;
 
                     default:
@@ -298,6 +342,7 @@ GAME_STATE complete()
             }
         }
     }
+    return choice;
 }
 
 //Maze carving function, uses recursive backtracking
@@ -325,87 +370,9 @@ void boreFrom(unsigned char* maze, int x, int y)
     }
 }
 
-
-//***functions for computer to solve maze***
-//Queue to use for BFS search
-#define ROOT_NODE_PARENT_DIRECTION -3
-#define MAX_QUEUE_LENGTH 10
-
-typedef struct Node
-{
-    int level;
-    int parentDirection;
-    int x, y;
-} Node;
-
-Node NULL_NODE = {-1, -1, -1, -1};
-
-typedef struct Queue
-{
-    Node nodes[MAX_QUEUE_LENGTH];
-    Node* head;
-    Node* tail;
-} Queue;
-
-Queue Q_init()
-{
-    Queue q;
-    q.head = NULL;
-    q.tail = NULL;
-    return q;
-}
-
-void Q_enqueue(Queue* q, Node n)
-{
-    if (q->head == NULL)
-    {
-        q->nodes[0] = n;
-        q->head = &q->nodes[0];
-        q->tail = &q->nodes[0];
-    }
-    else
-    {
-        q->tail++;
-        if(q->tail > &q->nodes[MAX_QUEUE_LENGTH - 1]) q->tail = &q->nodes[0];
-        if(q->tail != q->head)
-        {
-            *(q->tail) = n;
-        }
-        else
-        {
-            printf("Queue is full\n");
-            q->tail--;
-            if(q->tail < &q->nodes[0]) q->tail = &q->nodes[MAX_QUEUE_LENGTH - 1];
-        }
-    }
-    //printf("head points to %#0x8, tail points to %#0x8\n", q->head, q->tail);
-}
-
-Node Q_dequeue(Queue* q)
-{
-    Node res = NULL_NODE;
-    if(q->head != NULL)
-    {
-        res = *(q->head);
-        q->head++;
-        if(q->head > &q->nodes[MAX_QUEUE_LENGTH - 1]) q->head = &q->nodes[0];
-        if(q->head == q->tail+1 || (q->tail == &q->nodes[MAX_QUEUE_LENGTH - 1] && q->head == &q->nodes[0]))
-        {
-            q->head = NULL;
-            q->tail = NULL;
-        }
-    }else
-    {
-        printf("Empty queue!\n");
-    }
-    return res;
-}
-
-bool Q_notEmpty(Queue* q)
-{
-    bool res = q->head == NULL ? false : true;
-    return res;
-}
+/*********************************************
+***functions used by computer to solve maze***
+*********************************************/
 
 bool isNodeAtXY(Node n, int x, int y)
 {

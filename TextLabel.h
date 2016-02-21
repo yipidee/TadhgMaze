@@ -1,3 +1,6 @@
+#ifndef TEXTLABEL_H
+#define TEXTLABEL_H
+
 #ifdef __linux
     #include <SDL2/SDL.h>
     #include <SDL2/SDL_image.h>
@@ -58,8 +61,17 @@ void TL_setX(TextLabel tl, int x);
 //set y
 void TL_setY(TextLabel tl, int y);
 
+//get x
+int TL_getX(TextLabel tl);
+
+//get y
+int TL_getY(TextLabel tl);
+
 //get width of text label
 int TL_getWidth(TextLabel tl);
 
 //get Height of text label
 int TL_getHeight(TextLabel tl);
+
+
+#endif // TEXTLABEL_H
