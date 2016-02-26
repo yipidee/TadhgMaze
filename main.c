@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>
+#include "AGE_base.h"
+/*
 #ifdef __linux
     #include <SDL2/SDL.h>
     #include <SDL2/SDL_image.h>
@@ -13,6 +15,7 @@
     #include <SDL.h>
     #include <SDL_image.h>
 #endif
+*/
 #include "TextLabel.h"
 #include "Queue.h"
 
@@ -46,21 +49,18 @@ GAME_STATE play(void);
 GAME_STATE complete(void);
 
 //global variables
-SDL_Window* window;
-SDL_Renderer* renderer;
+AGE_Window window;
+AGE_Renderer renderer;
 int noMoves;
 int totalMoves;
 
 int main(int args, char** argv)
 {
-    //SDL init
-    SDL_Init(SDL_INIT_VIDEO);
-    SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
-    IMG_Init(IMG_INIT_JPG);
+    AGE_init();
 
-    //init SDL window and renderer
-    window = SDL_CreateWindow("Tadhg Maze Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, textureW, textureH, SDL_WINDOW_SHOWN);
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
+    //init window and renderer
+    window = AGE_getWindow(textureW, textureH);
+    renderer = AGE_getRenderer(window);
 
     //finite state machine linking game states
     GAME_STATE (*FST[])(void) = {&intro, &play, &complete};
@@ -75,13 +75,11 @@ int main(int args, char** argv)
     }
 
     //games has ended, release resources
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
+    AGE_releaseRenderer(renderer);
+    AGE_releaseWindow(window);
     renderer = NULL;
     window = NULL;
-    TTF_Quit();
-    IMG_Quit();
-    SDL_Quit();
+    AGE_quit();
 
     return 0;
 }
