@@ -35,10 +35,10 @@ typedef enum
 }GAME_STATE;
 
 //maze dimensions in nodes
-const int mazeW = 10;
-const int mazeH = 10;
-const int textureW = 580;
-const int textureH = 580;
+const int mazeW = 40;
+const int mazeH = 30;
+const int textureW = 800;
+const int textureH = 600;
 
 //functions equating to games states
 GAME_STATE intro(void);
@@ -56,6 +56,7 @@ int main(int args, char** argv)
     //SDL init
     SDL_Init(SDL_INIT_VIDEO);
     SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
+    IMG_Init(IMG_INIT_JPG);
 
     //init SDL window and renderer
     window = SDL_CreateWindow("Tadhg Maze Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, textureW, textureH, SDL_WINDOW_SHOWN);
@@ -81,6 +82,8 @@ int main(int args, char** argv)
     TTF_Quit();
     IMG_Quit();
     SDL_Quit();
+
+    return 0;
 }
 
 GAME_STATE intro()
@@ -143,7 +146,6 @@ GAME_STATE play()
     SDL_RenderCopy(renderer, mazeTexture, NULL, NULL);
 
     //Get Tadhg into the game
-    IMG_Init(IMG_INIT_JPG);
     SDL_Surface* tadhgSurf = IMG_Load("./tadhg.jpg");
     SDL_Texture* tadhg = SDL_CreateTextureFromSurface(renderer, tadhgSurf);
     SDL_FreeSurface(tadhgSurf);

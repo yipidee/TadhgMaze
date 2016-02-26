@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "Queue.h"
 
 Node NULL_NODE = {-1, -1, -1, -1};
