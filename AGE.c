@@ -7,7 +7,7 @@
     #include <SDL_image.h>
     #include <SDL_ttf.h>
 #endif
-#include "AGE_base.h"
+#include "AGE.h"
 
 //init AGE base module
 void AGE_init()

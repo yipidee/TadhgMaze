@@ -6,21 +6,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>
-#include "AGE_base.h"
-/*
-#ifdef __linux
-    #include <SDL2/SDL.h>
-    #include <SDL2/SDL_image.h>
-#elif _WIN32
-    #include <SDL.h>
-    #include <SDL_image.h>
-#endif
-*/
-#include "TextLabel.h"
-#include "Queue.h"
+#include "AGE.h"
 
 //constants used to represent the 4 directions from each node
-const unsigned char Directions[] = {0x01, 0x02, 0x04, 0x08};        //N, E, S, W
+const unsigned char Directions[] = {0x01, 0x02, 0x04, 0x08}; //N, E, S, W
 //array of x, y pairs representing physical movement in the N, E, S, W directions
 const int moveDir[] = {0,-1,1,0,0,1,-1,0};
 
@@ -38,9 +27,9 @@ typedef enum
 }GAME_STATE;
 
 //maze dimensions in nodes
-const int mazeW = 40;
-const int mazeH = 30;
-const int textureW = 800;
+const int mazeW = 20;
+const int mazeH = 20;
+const int textureW = 600;
 const int textureH = 600;
 
 //functions equating to games states
@@ -112,17 +101,17 @@ GAME_STATE play()
     boreFrom(&maze, x, y);
 
     //Create window renderer and blank texture
-    SDL_Texture* mazeTexture = SDL_CreateTexture(renderer,SDL_GetWindowPixelFormat(window),SDL_TEXTUREACCESS_TARGET,textureW,textureH);
+    AGE_Texture mazeTexture = AGE_CreateTexture(renderer,window,textureW,textureH);
 
     //Set rendering target to blank texture and clear
-    SDL_SetRenderTarget(renderer, mazeTexture);
-    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-    SDL_RenderClear(renderer);
+    AGE_SetRenderTarget(renderer, mazeTexture);
+    AGE_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+    AGE_RenderClear(renderer);
 
     //draw outline of maze
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
-    SDL_Rect outerRect = {0,0,textureW,textureH};
-    SDL_RenderDrawRect(renderer, &outerRect);
+    AGE_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+    AGE_Rect outerRect = {0,0,textureW,textureH};
+    AGE_RenderDrawRect(renderer, &outerRect);
 
     //width and height in px of a node
     int nodeW = textureW/mazeW;
@@ -133,26 +122,26 @@ GAME_STATE play()
     {
         for(m=0; m<mazeH; ++m)
         {
-            if(((maze[n*mazeH+m]&Directions[1])!=Directions[1])&&n!=mazeW-1) SDL_RenderDrawLine(renderer, (n+1)*nodeW, m*nodeH, (n+1)*nodeW, (m+1)*nodeH);
-            if(((maze[n*mazeH+m]&Directions[2])!=Directions[2])&&m!=mazeH-1) SDL_RenderDrawLine(renderer, n*nodeW, (m+1)*nodeH, (n+1)*nodeW, (m+1)*nodeH);
+            if(((maze[n*mazeH+m]&Directions[1])!=Directions[1])&&n!=mazeW-1) AGE_RenderDrawLine(renderer, (n+1)*nodeW, m*nodeH, (n+1)*nodeW, (m+1)*nodeH);
+            if(((maze[n*mazeH+m]&Directions[2])!=Directions[2])&&m!=mazeH-1) AGE_RenderDrawLine(renderer, n*nodeW, (m+1)*nodeH, (n+1)*nodeW, (m+1)*nodeH);
         }
     }
 
     //reset render target to screen (default)
-    SDL_SetRenderTarget(renderer, NULL);
+    AGE_SetRenderTarget(renderer, NULL);
     //render maze texture to screen
-    SDL_RenderCopy(renderer, mazeTexture, NULL, NULL);
+    AGE_RenderCopy(renderer, mazeTexture, NULL, NULL);
 
     //Get Tadhg into the game
-    SDL_Surface* tadhgSurf = IMG_Load("./tadhg.jpg");
-    SDL_Texture* tadhg = SDL_CreateTextureFromSurface(renderer, tadhgSurf);
-    SDL_FreeSurface(tadhgSurf);
+    AGE_Surface tadhgSurf = AGE_getSurfaceFromImage("./tadhg.jpg");
+    AGE_Texture tadhg = AGE_CreateTextureFromSurface(renderer, tadhgSurf);
+    AGE_FreeSurface(tadhgSurf);
     tadhgSurf = NULL;
 
     //Get mama into the game
-    SDL_Surface* mamaSurf = IMG_Load("./mama.jpg");
-    SDL_Texture* mama = SDL_CreateTextureFromSurface(renderer, mamaSurf);
-    SDL_FreeSurface(mamaSurf);
+    AGE_Surface mamaSurf = AGE_getSurfaceFromImage("./mama.jpg");
+    AGE_Texture mama = AGE_CreateTextureFromSurface(renderer, mamaSurf);
+    AGE_FreeSurface(mamaSurf);
     mamaSurf = NULL;
 
     //random start point
@@ -165,10 +154,10 @@ GAME_STATE play()
     noMoves = BSFsolve(&maze, tadhgX, tadhgY, mamaX, mamaY);
     printf("at least %i moves to finish\n", noMoves);
 
-    SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
-    SDL_RenderCopy(renderer, tadhg, NULL, &destTadhg);
-    SDL_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
-    SDL_RenderCopy(renderer, mama, NULL, &destMama);
+    AGE_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
+    AGE_RenderCopy(renderer, tadhg, NULL, &destTadhg);
+    AGE_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
+    AGE_RenderCopy(renderer, mama, NULL, &destMama);
 
     //label to show total moves made
     TextLabel movesMadeLabel = TL_createTextLabel("Moves made: 0", 0, 0);
@@ -179,16 +168,16 @@ GAME_STATE play()
     char movesMadeText[18]; //used later to vary content of the above label
 
     //display renderer content
-    SDL_RenderPresent(renderer);
+    AGE_RenderPresent(renderer);
 
     //SDL event loop
     bool quit = false;
-    SDL_Event e;
+    AGE_Event e;
     totalMoves = 0;
     while( true )
     {
         //Handle events on queue
-        while( SDL_PollEvent( &e ) != 0 )
+        while( AGE_PollEvent( &e ) != 0 )
         {
             //User requests quit
             if( e.type == SDL_QUIT )
@@ -228,9 +217,9 @@ GAME_STATE play()
         if(quit || (tadhgX==mamaX && tadhgY==mamaY))
         {
             //free memory allocated for maze
-            SDL_DestroyTexture(mazeTexture);
-            SDL_DestroyTexture(tadhg);
-            SDL_DestroyTexture(mama);
+            AGE_DestroyTexture(mazeTexture);
+            AGE_DestroyTexture(tadhg);
+            AGE_DestroyTexture(mama);
             mazeTexture=NULL;
             tadhg=NULL;
             mama=NULL;
@@ -238,27 +227,27 @@ GAME_STATE play()
             GAME_STATE retVal = quit ? STATE_QUIT : STATE_COMPLETE;
             return retVal;
         }
-        SDL_RenderCopy(renderer, mazeTexture, NULL, NULL);
-        SDL_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
-        SDL_RenderCopy(renderer, tadhg, NULL, &destTadhg);
-        SDL_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
-        SDL_RenderCopy(renderer, mama, NULL, &destMama);
+        AGE_RenderCopy(renderer, mazeTexture, NULL, NULL);
+        AGE_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
+        AGE_RenderCopy(renderer, tadhg, NULL, &destTadhg);
+        AGE_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
+        AGE_RenderCopy(renderer, mama, NULL, &destMama);
 
         snprintf(movesMadeText, 18, "Moves made: %i", totalMoves);
         TL_setText(movesMadeLabel, movesMadeText);
         TL_renderTextLabel(movesMadeLabel, renderer);
 
         //display renderer content
-        SDL_RenderPresent(renderer);
+        AGE_RenderPresent(renderer);
     }
 }
 
 GAME_STATE complete()
 {
     //Get complete into the game
-    SDL_Surface* completeSurf = IMG_Load("./complete.jpg");
-    SDL_Texture* complete = SDL_CreateTextureFromSurface(renderer, completeSurf);
-    SDL_FreeSurface(completeSurf);
+    AGE_Surface completeSurf = AGE_getSurfaceFromImage("./complete.jpg");
+    AGE_Texture complete = SDL_CreateTextureFromSurface(renderer, completeSurf);
+    AGE_FreeSurface(completeSurf);
     completeSurf = NULL;
 
     //Get congrats text texture
@@ -267,8 +256,8 @@ GAME_STATE complete()
     TL_setX(completion, (textureW-TL_getWidth(completion))/2);
     TL_setY(completion, (textureH-TL_getHeight(completion))/6);
 
-    SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, complete, NULL, NULL);
+    AGE_RenderClear(renderer);
+    AGE_RenderCopy(renderer, complete, NULL, NULL);
     TL_renderTextLabel(completion, renderer);
 
     //label to write score to screen
@@ -293,10 +282,10 @@ GAME_STATE complete()
     TL_renderTextLabel(contMessage, renderer);
 
     //render the complete maze screen
-    SDL_RenderPresent(renderer);
+    AGE_RenderPresent(renderer);
 
     //all resources can be destroyed since already rendered
-    SDL_DestroyTexture(complete);
+    AGE_DestroyTexture(complete);
     complete = NULL;
     TL_destroyTextLabel(completion);
     TL_destroyTextLabel(scoreLabel);
@@ -312,7 +301,7 @@ GAME_STATE complete()
     while( !choiceMade )
     {
         //Handle events on queue
-        SDL_Event e;
+        AGE_Event e;
         while( SDL_PollEvent( &e ) != 0 )
         {
             //User requests quit
