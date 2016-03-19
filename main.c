@@ -48,8 +48,8 @@ int main(int args, char** argv)
     AGE_init();
 
     //init window and renderer
-    window = AGE_getWindow(textureW, textureH);
-    renderer = AGE_getRenderer(window);
+    window = AGE_GetWindow(textureW, textureH);
+    renderer = AGE_GetRenderer(window);
 
     //finite state machine linking game states
     GAME_STATE (*FST[])(void) = {&intro, &play, &complete};
@@ -64,8 +64,8 @@ int main(int args, char** argv)
     }
 
     //games has ended, release resources
-    AGE_releaseRenderer(renderer);
-    AGE_releaseWindow(window);
+    AGE_ReleaseRenderer(renderer);
+    AGE_ReleaseWindow(window);
     renderer = NULL;
     window = NULL;
     AGE_quit();
@@ -133,16 +133,10 @@ GAME_STATE play()
     AGE_RenderCopy(renderer, mazeTexture, NULL, NULL);
 
     //Get Tadhg into the game
-    AGE_Surface tadhgSurf = AGE_getSurfaceFromImage("./tadhg.jpg");
-    AGE_Texture tadhg = AGE_CreateTextureFromSurface(renderer, tadhgSurf);
-    AGE_FreeSurface(tadhgSurf);
-    tadhgSurf = NULL;
+    AGE_Texture tadhg = AGE_createTextureFromImage(renderer, "./tadhg.jpg");
 
     //Get mama into the game
-    AGE_Surface mamaSurf = AGE_getSurfaceFromImage("./mama.jpg");
-    AGE_Texture mama = AGE_CreateTextureFromSurface(renderer, mamaSurf);
-    AGE_FreeSurface(mamaSurf);
-    mamaSurf = NULL;
+    AGE_Texture mama = AGE_createTextureFromImage(renderer, "./mama.jpg");
 
     //random start point
     int tadhgX = rand()%(mazeW/3);
@@ -155,9 +149,9 @@ GAME_STATE play()
     printf("at least %i moves to finish\n", noMoves);
 
     AGE_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
-    AGE_RenderCopy(renderer, tadhg, NULL, &destTadhg);
+    AGE_RenderTexture(renderer, tadhg, NULL, &destTadhg);
     AGE_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
-    AGE_RenderCopy(renderer, mama, NULL, &destMama);
+    AGE_RenderTexture(renderer, mama, NULL, &destMama);
 
     //label to show total moves made
     TextLabel movesMadeLabel = TL_createTextLabel("Moves made: 0", 0, 0);
@@ -227,11 +221,11 @@ GAME_STATE play()
             GAME_STATE retVal = quit ? STATE_QUIT : STATE_COMPLETE;
             return retVal;
         }
-        AGE_RenderCopy(renderer, mazeTexture, NULL, NULL);
+        AGE_RenderTexture(renderer, mazeTexture, NULL, NULL);
         AGE_Rect destTadhg = {tadhgX*nodeW+1, tadhgY*nodeH+1, nodeW-1, nodeH-1};
-        AGE_RenderCopy(renderer, tadhg, NULL, &destTadhg);
+        AGE_RenderTexture(renderer, tadhg, NULL, &destTadhg);
         AGE_Rect destMama = {mamaX*nodeW+1, mamaY*nodeH+1, nodeW-1, nodeH-1};
-        AGE_RenderCopy(renderer, mama, NULL, &destMama);
+        AGE_RenderTexture(renderer, mama, NULL, &destMama);
 
         snprintf(movesMadeText, 18, "Moves made: %i", totalMoves);
         TL_setText(movesMadeLabel, movesMadeText);
@@ -245,10 +239,7 @@ GAME_STATE play()
 GAME_STATE complete()
 {
     //Get complete into the game
-    AGE_Surface completeSurf = AGE_getSurfaceFromImage("./complete.jpg");
-    AGE_Texture complete = SDL_CreateTextureFromSurface(renderer, completeSurf);
-    AGE_FreeSurface(completeSurf);
-    completeSurf = NULL;
+    AGE_Texture complete = AGE_createTextureFromImage(renderer, "./complete.jpg");
 
     //Get congrats text texture
     TextLabel completion = TL_createTextLabel("Tadhg's safe! Yeah!", 0, 0);
@@ -257,7 +248,7 @@ GAME_STATE complete()
     TL_setY(completion, (textureH-TL_getHeight(completion))/6);
 
     AGE_RenderClear(renderer);
-    AGE_RenderCopy(renderer, complete, NULL, NULL);
+    AGE_RenderTexture(renderer, complete, NULL, NULL);
     TL_renderTextLabel(completion, renderer);
 
     //label to write score to screen
